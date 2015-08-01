@@ -3,24 +3,22 @@
 #include <unordered_map>
 #include <deque>
 
-#include "Stock.h"
+
+
 #include "DividendStrategy.h"
+#include "Stock.h"
 #include "Trade.h"
 
 using namespace std;
 
-
-
-
-
 class Market
 {
 public:
-	Price getStockPrice(const string& symbol);
-	Price getTickerPrice(const string& symbol);
-	Price getDividend(const string& symbol);
-	Price getPERatio(const string& symbol);
-	Price getIndex();
+	Price GetStockPrice(const string& symbol);
+	Price GetTickerPrice(const string& symbol);
+	Price GetDividend(const string& symbol);
+	Price GetPERatio(const string& symbol);
+	Price GetIndex();
 
 private:
 
@@ -32,6 +30,9 @@ private:
 
 int main(int argc, char* argv[])
 {
+	Market market;
+	market.AddSymbol()
+
 	return 0;
 }
 

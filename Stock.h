@@ -10,34 +10,13 @@ class Stock {
 public:
 	enum class DividendType { COMMON, PREFERRED };
 
-	Stock(std::string aSymbol, Price aParValue, DividendType aDividendType, double aDividend) :
-		symbol(aSymbol), parValue(aParValue), dividendType(aDividendType), fixedDividend(0.0), lastDividend(0.0)
-	{
-		if (DividendType::COMMON == aDividendType)
-		{
-			lastDividend = aDividend;
-			dividendStrategy = std::make_unique<DividendStrategy>(new CommonDividend(*this));
+	Stock(std::string aSymbol, Price aParValue, DividendType aDividendType, double aDividend);
 
-		}
-		else if (DividendType::PREFERRED == aDividendType)
-		{
-			fixedDividend = aDividend;
-			dividendStrategy = std::make_unique<DividendStrategy>(new PreferredDividend(*this));
-		}
-		else
-		{
-			throw std::invalid_argument("Dividend type not implemented.");
-		}
-	}
+	Price GetDividendYield(const Price& tickerPrice);
 
-	Price getDividendYield(const Price& tickerPrice)
-	{
-		return dividendStrategy->Calculate(tickerPrice);
-	}
-
-	Price getParValue() const { return parValue; }
-	double getFixedDividend() const { return fixedDividend; }
-	double getLastDividend() const { return lastDividend; }
+	Price GetParValue() const { return parValue; }
+	double GetFixedDividend() const { return fixedDividend; }
+	double GetLastDividend() const { return lastDividend; }
 
 private:
 	std::string symbol;
