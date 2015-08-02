@@ -9,7 +9,8 @@ typedef std::chrono::time_point<std::chrono::system_clock> Timestamp;
 class Trade {
 public:
 	enum class TradeType { BUY, SELL };
-	Trade(std::string aSymbol, unsigned int aQuantity, Price aPrice, TradeType aType,
+	enum class LongShortType { LONG, SHORT };
+	Trade(const std::string& aSymbol, unsigned int aQuantity, Price aPrice, TradeType aType,
 		Timestamp aTimestamp = std::chrono::system_clock::now()) :
 		symbol(aSymbol), quantity(aQuantity), price(aPrice), type(aType), timestamp(aTimestamp) {};
 
@@ -19,5 +20,8 @@ private:
 	unsigned int quantity;
 	Price price;
 	TradeType type;
+	LongShortType longShortType = LongShortType::LONG; //for simplicity
+
+
 
 };

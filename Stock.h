@@ -18,6 +18,28 @@ public:
 	double GetFixedDividend() const { return fixedDividend; }
 	double GetLastDividend() const { return lastDividend; }
 
+	//non copyable because of DividendStrategy
+	Stock(const Stock&) = delete;
+	Stock& operator=(const Stock&) = delete;
+	Stock(Stock&& s)
+	{
+		symbol = std::move(s.symbol);
+		parValue = s.parValue;
+		dividendType = s.dividendType;
+		fixedDividend = s.fixedDividend;
+		lastDividend = s.lastDividend;
+		dividendStrategy = std::move(s.dividendStrategy);
+	}
+	Stock& operator=(Stock&& s)
+	{
+		symbol = std::move(s.symbol);
+		parValue = s.parValue;
+		dividendType = s.dividendType;
+		fixedDividend = s.fixedDividend;
+		lastDividend = s.lastDividend;
+		dividendStrategy = std::move(s.dividendStrategy);
+	}
+
 private:
 	std::string symbol;
 	Price parValue;
@@ -25,8 +47,4 @@ private:
 	double lastDividend;
 	DividendType dividendType;
 	std::unique_ptr<DividendStrategy> dividendStrategy;
-
-	//non copyable because of DividendStrategy
-	Stock(const Stock&) = delete;
-	Stock& operator=(const Stock&) = delete;
 };
