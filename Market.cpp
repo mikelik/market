@@ -35,13 +35,41 @@ public:
 		return stocks.size();
 	}
 
-	bool AddTrade(const std::string& symbol, unsigned int quantity, Price price, Trade::TradeType type)
+	unsigned long GetPosition(const std::string& symbol) const
 	{
-		//Check position first
 		unsigned int position = 0;
 		if (positions.find(symbol) != positions.end())
-			position = positions[symbol];
+			position = positions.at(symbol);
+		return position;
+	}
 
+	bool AddTrade(const std::string& symbol, unsigned int quantity, Price price, Trade::TradeType type)
+	{
+		//Handle position first
+		unsigned int position = GetPosition(symbol);
+		if (Trade::TradeType::SELL == type && quantity > position)
+			return false; //cannot have negative position
+		if (Trade::TradeType::BUY == type && position > numeric_limits<unsigned long>::max() - quantity)
+			return false; //overflow
+		
+		bool tradeResult = HandleTrade(symbol, quantity, price, type);
+		if (tradeResult)
+		{
+			if (0 == position)
+				positions[symbol] = 0;
+			if (Trade::TradeType::BUY == type)
+				positions[symbol] += quantity;
+			else
+				positions[symbol] -= quantity;
+
+		}
+		
+
+	}
+
+private:
+	bool HandleTrade(const std::string& symbol, unsigned int quantity, Price price, Trade::TradeType type)
+	{
 		TradeConstIterator symbolIt = trades.find(symbol);
 
 		//add trade
@@ -52,11 +80,7 @@ public:
 
 		trades[symbol].push_back(Trade(symbol, quantity, price, type));
 		return true;
-			
-
 	}
-
-public:
 
 	unordered_map<string, Stock> stocks; //symbol to stock
 	unordered_map<string, Price> tickerPrices; //symbol to ticker price
@@ -82,6 +106,7 @@ int main(int argc, char* argv[])
 	assert(market.AddTrade("TEA", 5, 105, Trade::TradeType::BUY));
 	assert(market.AddTrade("TEA", 7, 105, Trade::TradeType::SELL) == false); //cannot have negative position
 	assert(market.AddTrade("TEA", 12, 95, Trade::TradeType::BUY));
+	assert(market.AddTrade("TEA", numeric_limits<unsigned long>::max(), 95, Trade::TradeType::BUY) == false); //overflow
 
 	market.AddTrade("TEA", 16, 99, Trade::TradeType::SELL);
 	market.AddTrade("POP", 1, 90, Trade::TradeType::BUY);
