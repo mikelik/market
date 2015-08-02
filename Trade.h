@@ -14,6 +14,11 @@ public:
 		Timestamp aTimestamp = std::chrono::system_clock::now()) :
 		symbol(aSymbol), quantity(aQuantity), price(aPrice), type(aType), timestamp(aTimestamp) {};
 
+	Price GetPrice() const { return price; }
+	unsigned int GetQuantity() const { return quantity; }
+	const Timestamp& GetTimestamp() const { return timestamp; }
+
+
 private:
 	std::string symbol;
 	Timestamp timestamp;

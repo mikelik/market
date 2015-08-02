@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <deque>
 #include <assert.h>
+#include <chrono>
 
 
 #include "DividendStrategy.h"
@@ -19,7 +20,7 @@ public:
 	typedef unordered_map<string, deque<Trade>>::const_iterator TradeConstIterator;
 	typedef pair<unordered_map<string, deque<Trade>>::const_iterator, bool> TradeInsertionPair;
 
-	Price GetStockPrice(const string& symbol);
+	Price GetStockPrice(const string& symbol) const;
 	Price GetTickerPrice(const string& symbol) const { return tickerPrices.at(symbol); }
 	Price GetDividend(const string& symbol) const { return stocks.at(symbol).GetDividendYield(GetTickerPrice(symbol)); };
 	Price GetPERatio(const string& symbol) const { return GetTickerPrice(symbol) / GetDividend(symbol); }
@@ -85,6 +86,25 @@ private:
 	unordered_map<string, unsigned long> positions; //symbol to position
 };
 
+Price Market::GetStockPrice(const string& symbol) const
+{
+	static const std::chrono::minutes FIFTEEN_MINS(15);
+	const Timestamp NOW = std::chrono::system_clock::now();
+	Price sum = 0;
+	unsigned int quantity = 0;
+	auto itTrade = trades.at(symbol);
+	for (auto it = itTrade.cbegin(); it != itTrade.cend(); ++it)
+	{
+		if (std::chrono::duration_cast <std::chrono::minutes>(NOW - it->GetTimestamp()) > FIFTEEN_MINS)
+			break;
+
+		sum += it->GetPrice() * it->GetQuantity();  //overflow not handled
+		quantity += it->GetQuantity();
+	}
+
+	return sum / quantity;
+
+}
 
 int main(int argc, char* argv[])
 {
@@ -103,7 +123,11 @@ int main(int argc, char* argv[])
 	assert(market.AddTrade("TEA", 7, 105, Trade::TradeType::SELL) == false); //cannot have negative position
 	assert(market.AddTrade("TEA", 12, 95, Trade::TradeType::BUY));
 	assert(market.AddTrade("TEA", numeric_limits<unsigned long>::max(), 95, Trade::TradeType::BUY) == false); //overflow
-	assert(market.GetPosition("TEA") == 17);
+	assert(market.GetPosition("TEA") == 5+12);
+	const Price EPS = numeric_limits<Price>::epsilon();
+	cout.precision(10);
+
+	assert(market.GetStockPrice("TEA") == (105.0 * 5 +  95 * 12) / (5 + 12));
 
 	market.AddTrade("TEA", 16, 99, Trade::TradeType::SELL);
 	assert(market.GetPosition("TEA") == 1);
@@ -115,20 +139,25 @@ int main(int argc, char* argv[])
 	assert(market.GetPosition("JOE") == 0);
 	assert(market.GetPosition("XYZ") == 0);
 
-	const long double EPS = numeric_limits<unsigned int>::epsilon();
-	cout.precision(10);
 
 	assert(market.GetDividend("TEA") <= EPS);
+	assert(market.GetPERatio("TEA") == numeric_limits<Price>::infinity());
 	assert(market.GetDividend("POP") == 8/80.0);
+	assert(market.GetPERatio("POP") == 80/(8/80.0));
 
 	market.AddTrade("ALE", 10, 46, Trade::TradeType::BUY);
 	assert(market.GetDividend("ALE") - (23/46.0) <= EPS);
+	assert(market.GetPERatio("ALE") == 46/(23/46.0));
 
 	market.AddTrade("GIN", 1, 200, Trade::TradeType::BUY);
 
-	cout << market.GetDividend("GIN")<<endl;
 	assert(market.GetDividend("GIN") - (0.02*100 / 200) <= EPS);
+	assert(market.GetPERatio("GIN") - 200 / ((0.02 * 100 / 200)) <= EPS);
 
+
+
+		int x;
+	cin >> x;
 	return 0;
 }
 
