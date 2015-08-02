@@ -20,8 +20,8 @@ public:
 	typedef pair<unordered_map<string, deque<Trade>>::const_iterator, bool> TradeInsertionPair;
 
 	Price GetStockPrice(const string& symbol);
-	Price GetTickerPrice(const string& symbol);
-	Price GetDividend(const string& symbol);
+	Price GetTickerPrice(const string& symbol) const { return tickerPrices.at(symbol); }
+	Price GetDividend(const string& symbol) const { return stocks.at(symbol).GetDividendYield(GetTickerPrice(symbol)); };
 	Price GetPERatio(const string& symbol);
 	Price GetIndex();
 
@@ -35,7 +35,7 @@ public:
 		return stocks.size();
 	}
 
-	unsigned long GetPosition(const std::string& symbol) const
+	unsigned long GetPosition(const std::string& symbol) const //noexcept
 	{
 		unsigned int position = 0;
 		if (positions.find(symbol) != positions.end())
@@ -55,16 +55,13 @@ public:
 		bool tradeResult = HandleTrade(symbol, quantity, price, type);
 		if (tradeResult)
 		{
-			if (0 == position)
-				positions[symbol] = 0;
+			tickerPrices[symbol] = price;
 			if (Trade::TradeType::BUY == type)
-				positions[symbol] += quantity;
+				positions[symbol] = position + quantity;
 			else
-				positions[symbol] -= quantity;
-
+				positions[symbol] = position - quantity;
 		}
-		
-
+		return tradeResult;
 	}
 
 private:
@@ -101,17 +98,35 @@ int main(int argc, char* argv[])
 	market.AddStock("JOE", 250, Stock::DividendType::COMMON, 13);
 	assert(market.GetStocksSize() == 5);
 
-
 	assert(market.AddTrade("TEA", 1, 105, Trade::TradeType::SELL) == false); //cannot have negative position
 	assert(market.AddTrade("TEA", 5, 105, Trade::TradeType::BUY));
 	assert(market.AddTrade("TEA", 7, 105, Trade::TradeType::SELL) == false); //cannot have negative position
 	assert(market.AddTrade("TEA", 12, 95, Trade::TradeType::BUY));
 	assert(market.AddTrade("TEA", numeric_limits<unsigned long>::max(), 95, Trade::TradeType::BUY) == false); //overflow
+	assert(market.GetPosition("TEA") == 17);
 
 	market.AddTrade("TEA", 16, 99, Trade::TradeType::SELL);
+	assert(market.GetPosition("TEA") == 1);
 	market.AddTrade("POP", 1, 90, Trade::TradeType::BUY);
 	market.AddTrade("POP", 2, 100, Trade::TradeType::BUY);
 	market.AddTrade("POP", 3, 80, Trade::TradeType::SELL);
+	assert(market.GetPosition("POP") == 0);
+
+	assert(market.GetPosition("JOE") == 0);
+	assert(market.GetPosition("XYZ") == 0);
+
+	const long double EPS = numeric_limits<unsigned int>::epsilon();
+	assert(market.GetDividend("TEA") <= EPS);
+	assert(market.GetDividend("POP") <= EPS);
+	market.AddTrade("ALE", 10, 46, Trade::TradeType::BUY);
+	assert(market.GetDividend("ALE") - (23/46.0) <= EPS);
+
+	market.AddTrade("GIN", 1, 200, Trade::TradeType::BUY);
+	cout.precision(10);
+	cout << market.GetDividend("GIN")<<endl;
+	cout << (0.02 * 100 / 200)<<endl;
+	assert(market.GetDividend("GIN") - (0.02*100 / 200) <= EPS);
+
 	return 0;
 }
 

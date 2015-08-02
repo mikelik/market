@@ -21,7 +21,7 @@ symbol(aSymbol), parValue(aParValue), dividendType(aDividendType), fixedDividend
 	}
 }
 
-Price Stock::GetDividendYield(const Price& tickerPrice)
+Price Stock::GetDividendYield(const Price& tickerPrice) const
 {
 	return dividendStrategy->Calculate(tickerPrice);
 }

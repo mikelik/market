@@ -12,7 +12,7 @@ public:
 
 	Stock(std::string aSymbol, Price aParValue, DividendType aDividendType, double aDividend);
 
-	Price GetDividendYield(const Price& tickerPrice);
+	Price GetDividendYield(const Price& tickerPrice) const;
 
 	Price GetParValue() const { return parValue; }
 	double GetFixedDividend() const { return fixedDividend; }
@@ -32,12 +32,17 @@ public:
 	}
 	Stock& operator=(Stock&& s)
 	{
-		symbol = std::move(s.symbol);
-		parValue = s.parValue;
-		dividendType = s.dividendType;
-		fixedDividend = s.fixedDividend;
-		lastDividend = s.lastDividend;
-		dividendStrategy = std::move(s.dividendStrategy);
+		if (this != &s)
+		{
+			symbol = std::move(s.symbol);
+			parValue = s.parValue;
+			dividendType = s.dividendType;
+			fixedDividend = s.fixedDividend;
+			lastDividend = s.lastDividend;
+			dividendStrategy = std::move(s.dividendStrategy);
+		}
+
+		return *this;
 	}
 
 private:
