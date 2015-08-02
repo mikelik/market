@@ -22,7 +22,7 @@ public:
 	Price GetStockPrice(const string& symbol);
 	Price GetTickerPrice(const string& symbol) const { return tickerPrices.at(symbol); }
 	Price GetDividend(const string& symbol) const { return stocks.at(symbol).GetDividendYield(GetTickerPrice(symbol)); };
-	Price GetPERatio(const string& symbol);
+	Price GetPERatio(const string& symbol) const { return GetTickerPrice(symbol) / GetDividend(symbol); }
 	Price GetIndex();
 
 	bool AddStock(const std::string& symbol, Price parValue, Stock::DividendType dividendType, double dividend)
@@ -116,15 +116,17 @@ int main(int argc, char* argv[])
 	assert(market.GetPosition("XYZ") == 0);
 
 	const long double EPS = numeric_limits<unsigned int>::epsilon();
+	cout.precision(10);
+
 	assert(market.GetDividend("TEA") <= EPS);
-	assert(market.GetDividend("POP") <= EPS);
+	assert(market.GetDividend("POP") == 8/80.0);
+
 	market.AddTrade("ALE", 10, 46, Trade::TradeType::BUY);
 	assert(market.GetDividend("ALE") - (23/46.0) <= EPS);
 
 	market.AddTrade("GIN", 1, 200, Trade::TradeType::BUY);
-	cout.precision(10);
+
 	cout << market.GetDividend("GIN")<<endl;
-	cout << (0.02 * 100 / 200)<<endl;
 	assert(market.GetDividend("GIN") - (0.02*100 / 200) <= EPS);
 
 	return 0;
