@@ -24,7 +24,7 @@ public:
 	Price GetTickerPrice(const string& symbol) const { return tickerPrices.at(symbol); }
 	Price GetDividend(const string& symbol) const { return stocks.at(symbol).GetDividendYield(GetTickerPrice(symbol)); };
 	Price GetPERatio(const string& symbol) const { return GetTickerPrice(symbol) / GetDividend(symbol); }
-	Price GetIndex();
+	Price GetIndex() const;
 
 	bool AddStock(const std::string& symbol, Price parValue, Stock::DividendType dividendType, double dividend)
 	{
@@ -44,7 +44,7 @@ public:
 		return position;
 	}
 
-	bool AddTrade(const std::string& symbol, unsigned int quantity, Price price, Trade::TradeType type)
+	bool AddTrade(const std::string& symbol, unsigned int quantity, Price price, Trade::TradeType type, const Timestamp& timestamp = std::chrono::system_clock::now())
 	{
 		//Handle position first
 		unsigned int position = GetPosition(symbol);
@@ -53,7 +53,7 @@ public:
 		if (Trade::TradeType::BUY == type && position > numeric_limits<unsigned long>::max() - quantity)
 			return false; //overflow
 		
-		bool tradeResult = HandleTrade(symbol, quantity, price, type);
+		bool tradeResult = HandleTrade(symbol, quantity, price, type, timestamp);
 		if (tradeResult)
 		{
 			tickerPrices[symbol] = price;
@@ -66,14 +66,14 @@ public:
 	}
 
 private:
-	bool HandleTrade(const std::string& symbol, unsigned int quantity, Price price, Trade::TradeType type)
+	bool HandleTrade(const std::string& symbol, unsigned int quantity, Price price, Trade::TradeType type, const Timestamp& timestamp)
 	{
 		TradeConstIterator symbolIt = trades.find(symbol);
 
 		//add trade
 		if (symbolIt == trades.cend())
 		{
-			return trades.insert(make_pair(symbol, deque<Trade> {Trade(symbol, quantity, price, type)})).second;
+			return trades.insert(make_pair(symbol, deque<Trade> {Trade(symbol, quantity, price, type, timestamp)})).second;
 		}
 
 		trades[symbol].push_back(Trade(symbol, quantity, price, type));
@@ -93,7 +93,7 @@ Price Market::GetStockPrice(const string& symbol) const
 	Price sum = 0;
 	unsigned int quantity = 0;
 	auto itTrade = trades.at(symbol);
-	for (auto it = itTrade.cbegin(); it != itTrade.cend(); ++it)
+	for (auto it = itTrade.crbegin(); it != itTrade.crend(); ++it)
 	{
 		if (std::chrono::duration_cast <std::chrono::minutes>(NOW - it->GetTimestamp()) > FIFTEEN_MINS)
 			break;
@@ -104,6 +104,18 @@ Price Market::GetStockPrice(const string& symbol) const
 
 	return sum / quantity;
 
+}
+
+Price Market::GetIndex() const
+{
+	Price index = 1;
+	const size_t size = tickerPrices.size();
+	for (const auto& it : tickerPrices)
+	{
+		index *= pow(it.second, 1.0/size);
+	}
+
+	return index;
 }
 
 int main(int argc, char* argv[])
@@ -127,7 +139,7 @@ int main(int argc, char* argv[])
 	const Price EPS = numeric_limits<Price>::epsilon();
 	cout.precision(10);
 
-	assert(market.GetStockPrice("TEA") == (105.0 * 5 +  95 * 12) / (5 + 12));
+	assert(fabs(market.GetStockPrice("TEA") - (105.0 * 5 + ( 95 * 12)) / (5 + 12)) < EPS);
 
 	market.AddTrade("TEA", 16, 99, Trade::TradeType::SELL);
 	assert(market.GetPosition("TEA") == 1);
@@ -140,24 +152,32 @@ int main(int argc, char* argv[])
 	assert(market.GetPosition("XYZ") == 0);
 
 
-	assert(market.GetDividend("TEA") <= EPS);
+	assert(fabs(market.GetDividend("TEA")) <= EPS);
 	assert(market.GetPERatio("TEA") == numeric_limits<Price>::infinity());
 	assert(market.GetDividend("POP") == 8/80.0);
 	assert(market.GetPERatio("POP") == 80/(8/80.0));
 
 	market.AddTrade("ALE", 10, 46, Trade::TradeType::BUY);
-	assert(market.GetDividend("ALE") - (23/46.0) <= EPS);
+	assert(fabs(market.GetDividend("ALE") - (23/46.0)) <= EPS);
 	assert(market.GetPERatio("ALE") == 46/(23/46.0));
 
 	market.AddTrade("GIN", 1, 200, Trade::TradeType::BUY);
 
-	assert(market.GetDividend("GIN") - (0.02*100 / 200) <= EPS);
-	assert(market.GetPERatio("GIN") - 200 / ((0.02 * 100 / 200)) <= EPS);
+	assert(fabs(market.GetDividend("GIN") - (0.02*100 / 200)) <= EPS);
+	assert(fabs(market.GetPERatio("GIN") - 200 / ((0.02 * 100 / 200))) <= EPS);
 
 
+	assert(market.AddTrade("JOE", 1, 105, Trade::TradeType::BUY, std::chrono::system_clock::now() - std::chrono::minutes(16)));
+	assert(market.AddTrade("JOE", 5, 105, Trade::TradeType::BUY, std::chrono::system_clock::now() - std::chrono::minutes(14)));
+	assert(market.AddTrade("JOE", 7, 105, Trade::TradeType::BUY, std::chrono::system_clock::now() - std::chrono::minutes(3)));
+	assert(market.AddTrade("JOE", 12, 95, Trade::TradeType::BUY));
+	assert(market.AddTrade("JOE", 1, 95, Trade::TradeType::SELL));
+	assert(market.GetPosition("JOE") == 5 + 7 + 12);
 
-		int x;
-	cin >> x;
+	assert(market.GetStockPrice("JOE") == (5*105.0+7*105+12*95+95) / (5 +7+1+ 12));
+	
+	assert(fabs(market.GetIndex() - powl(99.0 * 80 * 46 * 200 * 95, 1 / 5.0)) < EPS);
+
 	return 0;
 }
 
