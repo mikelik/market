@@ -21,29 +21,8 @@ public:
 	//non copyable because of DividendStrategy
 	Stock(const Stock&) = delete;
 	Stock& operator=(const Stock&) = delete;
-	Stock(Stock&& s)
-	{
-		symbol = std::move(s.symbol);
-		parValue = s.parValue;
-		dividendType = s.dividendType;
-		fixedDividend = s.fixedDividend;
-		lastDividend = s.lastDividend;
-		dividendStrategy = std::move(s.dividendStrategy);
-	}
-	Stock& operator=(Stock&& s)
-	{
-		if (this != &s)
-		{
-			symbol = std::move(s.symbol);
-			parValue = s.parValue;
-			dividendType = s.dividendType;
-			fixedDividend = s.fixedDividend;
-			lastDividend = s.lastDividend;
-			dividendStrategy = std::move(s.dividendStrategy);
-		}
-
-		return *this;
-	}
+	Stock(Stock&& s);
+	Stock& operator=(Stock&& s);
 
 private:
 	std::string symbol;

@@ -1,12 +1,13 @@
 #include "DividendStrategy.h"
-#include <exception>
+#include <stdexcept>
 #include "Stock.h"
 
+using namespace std;
 DividendStrategy::DividendStrategy(Stock* aStock)
 {
 	if (NULL == aStock)
-		throw std::invalid_argument("NULL pointer to stock");
-};
+		throw invalid_argument("NULL pointer to stock");
+}
 
 CommonDividend::CommonDividend(Stock* aStock) : DividendStrategy(aStock),
 lastDividend(aStock->GetLastDividend())
@@ -19,7 +20,7 @@ Price CommonDividend::Calculate(const Price& tickerPrice) const
 }
 
 PreferredDividend::PreferredDividend(Stock* aStock) : DividendStrategy(aStock),
-fixedDividend(aStock->GetFixedDividend()), parValue(aStock->GetParValue())
+parValue(aStock->GetParValue()), fixedDividend(aStock->GetFixedDividend())
 {
 }
 

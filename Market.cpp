@@ -1,90 +1,48 @@
 #include <iostream>
-#include <string>
-#include <unordered_map>
-#include <deque>
+
 #include <assert.h>
 #include <chrono>
+#include <cmath>
 
-
-#include "DividendStrategy.h"
-#include "Stock.h"
-#include "Trade.h"
+#include "Market.h"
 
 using namespace std;
 
-class Market {
-public:
-	typedef pair<unordered_map<string, Stock>::const_iterator, bool> StockInsertionPair;
+bool Market::AddTrade(const std::string& symbol, unsigned int quantity, Price price, Trade::TradeType type, const Timestamp& timestamp /*= std::chrono::system_clock::now()*/)
+{
+	//Handle position first
+	unsigned int position = GetPosition(symbol);
+	if (Trade::TradeType::SELL == type && quantity > position)
+		return false; //cannot have negative position
+	if (Trade::TradeType::BUY == type && position > numeric_limits<unsigned int>::max() - quantity)
+		return false; //overflow
 
-	typedef unordered_map<string, deque<Trade>> TradesMap;
-	typedef unordered_map<string, deque<Trade>>::const_iterator TradeConstIterator;
-	typedef pair<unordered_map<string, deque<Trade>>::const_iterator, bool> TradeInsertionPair;
-
-	Price GetStockPrice(const string& symbol) const;
-	Price GetTickerPrice(const string& symbol) const { return tickerPrices.at(symbol); }
-	Price GetDividend(const string& symbol) const { return stocks.at(symbol).GetDividendYield(GetTickerPrice(symbol)); };
-	Price GetPERatio(const string& symbol) const { return GetTickerPrice(symbol) / GetDividend(symbol); }
-	Price GetIndex() const;
-
-	bool AddStock(const std::string& symbol, Price parValue, Stock::DividendType dividendType, double dividend)
+	bool tradeResult = HandleTrade(symbol, quantity, price, type, timestamp);
+	if (tradeResult)
 	{
-		return stocks.insert(make_pair(symbol, Stock(symbol, parValue, dividendType, dividend))).second;
+		tickerPrices[symbol] = price;
+		if (Trade::TradeType::BUY == type)
+			positions[symbol] = position + quantity;
+		else
+			positions[symbol] = position - quantity;
+	}
+	return tradeResult;
+}
+
+bool Market::HandleTrade(const std::string& symbol, unsigned int quantity, Price price, Trade::TradeType type, const Timestamp& timestamp)
+{
+	TradeConstIterator symbolIt = trades.find(symbol);
+
+	//add trade
+	if (symbolIt == trades.cend())
+	{
+		return trades.insert(std::make_pair(symbol, std::deque<Trade> {Trade(symbol, quantity, price, type, timestamp)})).second;
 	}
 
-	size_t GetStocksSize() const
-	{
-		return stocks.size();
-	}
+	trades[symbol].push_back(Trade(symbol, quantity, price, type));
+	return true;
+}
 
-	unsigned long GetPosition(const std::string& symbol) const //noexcept
-	{
-		unsigned int position = 0;
-		if (positions.find(symbol) != positions.end())
-			position = positions.at(symbol);
-		return position;
-	}
-
-	bool AddTrade(const std::string& symbol, unsigned int quantity, Price price, Trade::TradeType type, const Timestamp& timestamp = std::chrono::system_clock::now())
-	{
-		//Handle position first
-		unsigned int position = GetPosition(symbol);
-		if (Trade::TradeType::SELL == type && quantity > position)
-			return false; //cannot have negative position
-		if (Trade::TradeType::BUY == type && position > numeric_limits<unsigned long>::max() - quantity)
-			return false; //overflow
-		
-		bool tradeResult = HandleTrade(symbol, quantity, price, type, timestamp);
-		if (tradeResult)
-		{
-			tickerPrices[symbol] = price;
-			if (Trade::TradeType::BUY == type)
-				positions[symbol] = position + quantity;
-			else
-				positions[symbol] = position - quantity;
-		}
-		return tradeResult;
-	}
-
-private:
-	bool HandleTrade(const std::string& symbol, unsigned int quantity, Price price, Trade::TradeType type, const Timestamp& timestamp)
-	{
-		TradeConstIterator symbolIt = trades.find(symbol);
-
-		//add trade
-		if (symbolIt == trades.cend())
-		{
-			return trades.insert(make_pair(symbol, deque<Trade> {Trade(symbol, quantity, price, type, timestamp)})).second;
-		}
-
-		trades[symbol].push_back(Trade(symbol, quantity, price, type));
-		return true;
-	}
-
-	unordered_map<string, Stock> stocks; //symbol to stock
-	unordered_map<string, Price> tickerPrices; //symbol to ticker price
-	TradesMap trades; //symbol to trades
-	unordered_map<string, unsigned long> positions; //symbol to position
-};
 
 Price Market::GetStockPrice(const string& symbol) const
 {
@@ -120,6 +78,7 @@ Price Market::GetIndex() const
 
 int main(int argc, char* argv[])
 {
+	const long double EPS = 0.000001;
 	Market market;
 	assert(market.AddStock("TEA", 100, Stock::DividendType::COMMON, 0));
 	
@@ -134,12 +93,11 @@ int main(int argc, char* argv[])
 	assert(market.AddTrade("TEA", 5, 105, Trade::TradeType::BUY));
 	assert(market.AddTrade("TEA", 7, 105, Trade::TradeType::SELL) == false); //cannot have negative position
 	assert(market.AddTrade("TEA", 12, 95, Trade::TradeType::BUY));
-	assert(market.AddTrade("TEA", numeric_limits<unsigned long>::max(), 95, Trade::TradeType::BUY) == false); //overflow
+	assert(market.AddTrade("TEA", numeric_limits<unsigned int>::max(), 95, Trade::TradeType::BUY) == false); //overflow
 	assert(market.GetPosition("TEA") == 5+12);
-	const Price EPS = numeric_limits<Price>::epsilon();
 	cout.precision(10);
 
-	assert(fabs(market.GetStockPrice("TEA") - (105.0 * 5 + ( 95 * 12)) / (5 + 12)) < EPS);
+	assert(fabs(market.GetStockPrice("TEA") - (105.0 * 5 + ( 95 * 12)) / (5 + 12)) <= EPS);
 
 	market.AddTrade("TEA", 16, 99, Trade::TradeType::SELL);
 	assert(market.GetPosition("TEA") == 1);
@@ -154,7 +112,7 @@ int main(int argc, char* argv[])
 
 	assert(fabs(market.GetDividend("TEA")) <= EPS);
 	assert(market.GetPERatio("TEA") == numeric_limits<Price>::infinity());
-	assert(market.GetDividend("POP") == 8/80.0);
+	assert(fabs(market.GetDividend("POP") - 8/80.0) < EPS);
 	assert(market.GetPERatio("POP") == 80/(8/80.0));
 
 	market.AddTrade("ALE", 10, 46, Trade::TradeType::BUY);
@@ -174,9 +132,9 @@ int main(int argc, char* argv[])
 	assert(market.AddTrade("JOE", 1, 95, Trade::TradeType::SELL));
 	assert(market.GetPosition("JOE") == 5 + 7 + 12);
 
-	assert(market.GetStockPrice("JOE") == (5*105.0+7*105+12*95+95) / (5 +7+1+ 12));
+	assert(fabs(market.GetStockPrice("JOE") - (5*105.0+7*105+12*95+95) / (5 +7+1+ 12)) < EPS);
 	
-	assert(fabs(market.GetIndex() - powl(99.0 * 80 * 46 * 200 * 95, 1 / 5.0)) < EPS);
+	assert(fabs(market.GetIndex() - pow(99.0 * 80 * 46 * 200 * 95, 1 / 5.0)) < EPS);
 
 	return 0;
 }

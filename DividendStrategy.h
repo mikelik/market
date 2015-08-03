@@ -7,13 +7,13 @@ typedef long double Price;
 
 class DividendStrategy {
 public:
-	DividendStrategy(Stock* aStock);
+	explicit DividendStrategy(Stock* aStock);
 	virtual Price Calculate(const Price& tickerPrice) const = 0;
 };
 
 class CommonDividend : public DividendStrategy {
 public:
-	CommonDividend(Stock* aStock);
+	explicit CommonDividend(Stock* aStock);
 	virtual Price Calculate(const Price& tickerPrice) const;
 protected:
 	double lastDividend;
@@ -21,7 +21,7 @@ protected:
 
 class PreferredDividend : public DividendStrategy {
 public:
-	PreferredDividend(Stock* aStock);
+	explicit PreferredDividend(Stock* aStock);
 	virtual Price Calculate(const Price& tickerPrice) const;
 protected:
 	Price parValue;

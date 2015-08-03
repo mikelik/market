@@ -1,8 +1,11 @@
 #include "Stock.h"
 #include "DividendStrategy.h"
+#include <stdexcept>
 
-Stock::Stock(std::string aSymbol, Price aParValue, DividendType aDividendType, double aDividend) :
-symbol(aSymbol), parValue(aParValue), dividendType(aDividendType), fixedDividend(0.0), lastDividend(0.0)
+using namespace std;
+
+Stock::Stock(string aSymbol, Price aParValue, DividendType aDividendType, double aDividend) :
+symbol(aSymbol), parValue(aParValue), fixedDividend(0.0), lastDividend(0.0), dividendType(aDividendType)
 {
 	if (DividendType::COMMON == aDividendType)
 	{
@@ -17,10 +20,33 @@ symbol(aSymbol), parValue(aParValue), dividendType(aDividendType), fixedDividend
 	}
 	else
 	{
-		throw std::invalid_argument("Dividend type not implemented.");
+		throw invalid_argument("Dividend type not implemented.");
 	}
 }
 
+Stock::Stock(Stock&& s)
+{
+	symbol = move(s.symbol);
+	parValue = s.parValue;
+	dividendType = s.dividendType;
+	fixedDividend = s.fixedDividend;
+	lastDividend = s.lastDividend;
+	dividendStrategy = move(s.dividendStrategy);
+}
+Stock& Stock::operator=(Stock&& s)
+{
+	if (this != &s)
+	{
+		symbol = move(s.symbol);
+		parValue = s.parValue;
+		dividendType = s.dividendType;
+		fixedDividend = s.fixedDividend;
+		lastDividend = s.lastDividend;
+		dividendStrategy = move(s.dividendStrategy);
+	}
+
+	return *this;
+}
 Price Stock::GetDividendYield(const Price& tickerPrice) const
 {
 	return dividendStrategy->Calculate(tickerPrice);

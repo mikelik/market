@@ -18,15 +18,12 @@ public:
 	unsigned int GetQuantity() const { return quantity; }
 	const Timestamp& GetTimestamp() const { return timestamp; }
 
-
 private:
 	std::string symbol;
-	Timestamp timestamp;
 	unsigned int quantity;
 	Price price;
 	TradeType type;
+	Timestamp timestamp;
 	LongShortType longShortType = LongShortType::LONG; //for simplicity
-
-
 
 };
